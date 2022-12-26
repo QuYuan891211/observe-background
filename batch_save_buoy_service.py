@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 import time
 from datetime import datetime
 import numpy as np
-
+import redis
 
 # 读取观测点基础信息表
 def read_obs_config(file_path, query_time):
@@ -62,9 +62,22 @@ if __name__ == '__main__':
     start = time.process_time()
     error_message = []
     # TODO:部署前修改为获得当前需要查询的时间
+    # 0.数据库相关信息
+    db = ''
+    name_config = ''
+    psw = ''
+    user = ''
+
     query_time_start = datetime(2022, 11, 16, 16, 0, 0)
-    query_time_end = datetime(2022, 11, 18, 8, 0, 0)
+    query_time_end = datetime(2022, 11, 16, 18, 0, 0)
     query_time = query_time_start
+
+    #获取Redis存储记录
+    r = redis.StrictRedis(host='localhost', port=6379, db=0, password=psw,decode_responses=True)
+    record_list = r.lrange('buoy', 0, -1)
+    print(record_list)
+
+
 
     #TODO: 部署前取消循环
     while query_time <= query_time_end:
@@ -75,28 +88,31 @@ if __name__ == '__main__':
         # query_time_str = '2022111620'
         # query_time = time.strftime("%Y-%m-%d %H:%M:%S", query_time_str)
 
-        # 0. 数据库相关信息
-        db = ''
-        name_config = ''
-        psw = ''
-        user = ''
+
         # 1. 观测点基础信息表路径
         file_path = r'F:\Projects\data\observe\test\%s\%s\%s.csv' % (query_year_str, query_mon_str, query_time_str)
         print(file_path)
         # 2. 写入观测点基础信息
+
         if(os.path.exists(file_path)):
-            df = read_obs_config(file_path, query_time)
+            if(query_time_str in record_list):
+                error_message.append('%s 已在记录中，本次不进行入库操作' % query_time_str)
+            else:
+                df = read_obs_config(file_path, query_time)
 
-            # 3. 观测点基础信息写入数据库
+                # 3. 观测点基础信息写入数据库
 
-            df_to_sql(df, name_config, db, psw, user)
-            end = time.process_time()
-            print('%s 数据入库完成， 用时(秒): ' % query_time_str, end - start)
+                df_to_sql(df, name_config, db, psw, user)
+
+                r.lpush('buoy', query_time_str)
+                end = time.process_time()
+                print('%s 数据入库完成， 用时(秒): ' % query_time_str, end - start)
         else:
-            error_message.append('%s文件不存在' % file_path)
+            error_message.append('%s文件不存在, 未入库' % file_path)
         query_time += dt.timedelta(hours=1)
     print('全部数据入库完成')
+
     if len(error_message) > 0:
         # print(len(error_message))
         for item in error_message:
-            print('错误信息：%s，未入库' % item)
+            print('错误信息：%s' % item)
