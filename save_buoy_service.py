@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
     if len(error_message) > 0:
         # for item in error_message:
-        #     print('错误信息：%s' % item)
+            # print('错误信息：%s' % item)
         log.logger.error(error_message)
 
     # log.logger.info('==={}===\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
