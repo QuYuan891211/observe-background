@@ -165,7 +165,7 @@ if __name__ == '__main__':
             error_message.append('%s文件不存在, 未入库' % file_path)
         query_time += dt.timedelta(hours=1)
     # 写入Log文件并在屏幕中输出
-    info = '程序执行完成'
+    info = '批处理程序执行完成'
     # print(info)
     log.logger.info(info)
 
