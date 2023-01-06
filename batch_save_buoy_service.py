@@ -62,11 +62,13 @@ def read_obs_config(file_path, query_time):
     # dropping the rows having NaN values
     df = df.dropna(axis=0, how='all')
     df = df.dropna(axis=1, how='all')
+    df.rename(columns={'TIME': 'record_time', 'AT': 'att'}, inplace=True)
+
     # 处理时间
     times = time.time()
     local_time = time.localtime(times)
     formate_time = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-    df.insert(loc=2, column='create', value=formate_time)
+    df.insert(loc=2, column='create_time', value=formate_time)
     df.insert(loc=3, column='modified', value=formate_time)
     df.insert(loc=0, column='query_time', value=query_time)
     # df.insert(loc=0, column)
@@ -74,8 +76,7 @@ def read_obs_config(file_path, query_time):
     df = df.drop('LAT', axis=1)
     # TODO:在质量控制完成后，删除此句
     df = df.replace('/', np.nan)
-
-    print(df)
+    # print(df)
     return df
 
 
@@ -99,7 +100,8 @@ def df_to_sql(df, name, db, psw, user, ip):
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     start = time.process_time()
-    error_message = []
+    error_message_exits = []
+    error_message_missing = []
 
     # 0.数据库相关信息
     config_init = ConfigInit()
@@ -112,11 +114,12 @@ if __name__ == '__main__':
     url = config_info_mysql.url
     ip = url + ':' + port
 
-    # TODO:部署前query_time_start和query_time_end修改为获得当前需要查询的时间
-    query_time_start = datetime(2022, 11, 16, 16, 0, 0)
-    query_time_end = datetime(2022, 11, 18, 8, 0, 0)
+    # 修改为制定日期的时间段，注意个位数月份和时间不要加0
+    query_time_start = datetime(2023, 1, 1, 8, 0, 0)
+    query_time_end = datetime(2023, 1, 6, 8, 0, 0)
     query_time = query_time_start
 
+	
     # 获取Redis存储记录
     config_info_redis = config_init.read_database_info('redis')
     host_redis = config_info_redis.url
@@ -126,11 +129,11 @@ if __name__ == '__main__':
     r = redis.StrictRedis(host_redis, port_redis, db_redis, password_redis, decode_responses=True)
     # if(dict.has_key(key)):
     record_list = r.lrange('buoy', 0, -1)
-    print('当前已存数据时间： %s' % record_list)
+    # print('当前已存数据时间： %s' % record_list)
 
     # 配置log文件
     logpath = config_init.read_log_path()
-    print(logpath)
+    print('日志文件目录： ' + logpath)
     # log = log.Logger(logpath, level='info')
     log = log.Logger(r'%s' % logpath, level='debug')
 
@@ -150,7 +153,7 @@ if __name__ == '__main__':
 
         if (os.path.exists(file_path)):
             if (query_time_str in record_list):
-                error_message.append('%s 已在记录中，本次不进行入库操作' % query_time_str)
+                error_message_exits.append(query_time_str)
             else:
                 df = read_obs_config(file_path, query_time)
 
@@ -159,19 +162,26 @@ if __name__ == '__main__':
                 df_to_sql(df, name_config, db, psw, user, ip)
 
                 r.lpush('buoy', query_time_str)
-                end = time.process_time()
-                print('%s 数据入库完成， 用时(秒): ' % query_time_str, end - start)
+
+                print('%s 数据入库完成 ' % query_time_str)
         else:
-            error_message.append('%s文件不存在, 未入库' % file_path)
+            error_message_missing.append(query_time_str)
         query_time += dt.timedelta(hours=1)
     # 写入Log文件并在屏幕中输出
-    info = '批处理程序执行完成'
+
+    end = time.process_time()
+    info = '程序执行完成, 总用时(秒)： %s' % (end - start)
+
     # print(info)
     log.logger.info(info)
 
-    if len(error_message) > 0:
+    if len(error_message_exits) > 0:
         # for item in error_message:
-        #     print('错误信息：%s' % item)
-        log.logger.error(error_message)
-
+        #     # print('错误信息：%s' % item)
+        log.logger.error('以下CSV文件重复入库，本次不进行入库操作： ' + str(error_message_exits))
+    if len(error_message_missing) > 0:
+        # for item in error_message:
+        #     # print('错误信息：%s' % item)
+        log.logger.error('以下CSV文件在目标路径中不存在，请核对文件信息： ' + str(error_message_missing))
+    input('按任意键退出')
     # log.logger.info('==={}===\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))

@@ -114,11 +114,14 @@ if __name__ == '__main__':
     url = config_info_mysql.url
     ip = url + ':' + port
 
-    # TODO:部署前query_time_start和query_time_end修改为获得当前需要查询的时间
-    query_time_start = datetime(2022, 11, 16, 16, 0, 0)
-    query_time_end = datetime(2022, 12, 29, 11, 0, 0)
-    query_time = query_time_start
-
+    # 修改为制定日期的时间段，注意个位数月份和时间不要加0
+    # query_time_start = datetime(2023, 1, 1, 8, 0, 0)
+    # query_time_end = datetime(2023, 1, 6, 8, 0, 0)
+    query_time = dt.datetime.now()
+    query_time_start = query_time
+    query_time_end = query_time
+   
+	
     # 获取Redis存储记录
     config_info_redis = config_init.read_database_info('redis')
     host_redis = config_info_redis.url
@@ -128,7 +131,7 @@ if __name__ == '__main__':
     r = redis.StrictRedis(host_redis, port_redis, db_redis, password_redis, decode_responses=True)
     # if(dict.has_key(key)):
     record_list = r.lrange('buoy', 0, -1)
-    print('当前已存数据时间： %s' % record_list)
+    # print('当前已存数据时间： %s' % record_list)
 
     # 配置log文件
     logpath = config_init.read_log_path()
@@ -182,5 +185,4 @@ if __name__ == '__main__':
         # for item in error_message:
         #     # print('错误信息：%s' % item)
         log.logger.error('以下CSV文件在目标路径中不存在，请核对文件信息： ' + str(error_message_missing))
-    input('按任意键退出')
     # log.logger.info('==={}===\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
