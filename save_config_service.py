@@ -60,7 +60,7 @@ def read_obs_config(file_path):
     times = time.time()
     local_time = time.localtime(times)
     formate_time = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-    df.insert(loc=5, column='create', value=formate_time)
+    df.insert(loc=5, column='create_time', value=formate_time)
     df.insert(loc=6, column='modified', value=formate_time)
     print(df)
     return df

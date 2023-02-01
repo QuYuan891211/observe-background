@@ -117,7 +117,7 @@ if __name__ == '__main__':
     # 修改为制定日期的时间段，注意个位数月份和时间不要加0
     # query_time_start = datetime(2023, 1, 1, 8, 0, 0)
     # query_time_end = datetime(2023, 1, 6, 8, 0, 0)
-    query_time = dt.datetime.now()
+    query_time = dt.datetime.now().replace(minute=0, second=0, microsecond=0)
     query_time_start = query_time
     query_time_end = query_time
    
